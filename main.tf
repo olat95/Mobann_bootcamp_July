@@ -53,8 +53,8 @@
 terraform {
     required_providers {
         aws = {
-        source = "hashicorp/aws"
-        version = "~> 5.0"
+            source = "hashicorp/aws"
+            version = "~> 5.0"
         }
     }
 }
@@ -206,45 +206,109 @@ provider "aws" {
 #     value = aws_instance.MOBANN-EC2.private_ip
 # }
 
+# ---------------------------------------------------------------------------------------------
 
 # Generate a new RSA key pair [https://registry.terraform.io/providers/hashicorp/tls/latest/docs/resources/private_key#example-usage]
-resource "tls_private_key" "MOBANN-KEY" {
-    algorithm = "RSA"
-    rsa_bits = 4096
-}
+# resource "tls_private_key" "MOBANN-KEY" {
+#     algorithm = "RSA"
+#     rsa_bits = 4096
+# }
 
-# create a new AWS Key Pair using the tls_private_key resource
-resource "aws_key_pair" "MOBANN-KP" {
-    key_name = "MOBANN-KP"
-    public_key = tls_private_key.MOBANN-KEY.public_key_openssh
-}
+# # create a new AWS Key Pair using the tls_private_key resource
+# resource "aws_key_pair" "MOBANN-KP" {
+#     key_name = "MOBANN-KP"
+#     public_key = tls_private_key.MOBANN-KEY.public_key_openssh
+# }
 
-# create a local file to store the private key
-resource "local_file" "MOBANN-PRIVATE-KEY" {
-    filename = "../MOBANN-PRIVATE-KEY.pem"
-    file_permission = 0400
-    content = tls_private_key.MOBANN-KEY.private_key_pem
-}
+# # create a local file to store the private key
+# resource "local_file" "MOBANN-PRIVATE-KEY" {
+#     filename = "../MOBANN-PRIVATE-KEY.pem"
+#     file_permission = 0400
+#     content = tls_private_key.MOBANN-KEY.private_key_pem
+# }
 
-# get latest Amazon Linux 2 AMI https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ami#example-usage
-data "aws_ami" "MOBANN-AMI" {
-    owners = ["amazon"]
-    most_recent = true
+# # get latest Amazon Linux 2 AMI https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ami#example-usage
+# data "aws_ami" "MOBANN-AMI" {
+#     owners = ["amazon"]
+#     most_recent = true
 
-    filter {
-        name = "name"
-        values = ["amzn2-ami-hvm-*-x86_64-gp2"]
-    }
+#     filter {
+#         name = "name"
+#         values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+#     }
+# }
 
-    # filter {
-    #     name   = "root-device-type"
-    #     values = ["ebs"]
-    # }
+# # create security group for the EC2 instance
+# resource "aws_security_group" "MOBANN-SG" {
+#     name        = "MOBANN-SG_web_traffic"
+#     description = "Allow SSH traffic"
 
-    # filter {
-    #     name   = "virtualization-type"
-    #     values = ["hvm"]
-    # }
-}
+#     ingress {
+#         from_port   = 22
+#         to_port     = 22
+#         protocol    = "tcp"
+#         cidr_blocks = ["0.0.0.0/0"]
+#     }
 
-# create security group for the EC2 instance
+#     ingress {
+#         from_port   = 80
+#         to_port     = 80
+#         protocol    = "tcp"
+#         cidr_blocks = ["0.0.0.0/0"]
+#     }
+
+#     egress {
+#         from_port   = 0
+#         to_port     = 0
+#         protocol    = "-1"
+#         cidr_blocks = ["0.0.0.0/0"]
+#     }
+
+#     tags = {
+#         Name = "MOBANN-SG"
+#     }
+# }
+
+# # create an EC2 instance
+# resource "aws_instance" "MOBANN-EC2" {
+#     ami           = data.aws_ami.MOBANN-AMI.id #interpolation
+#     instance_type = "t3.micro"
+#     key_name = aws_key_pair.MOBANN-KP.key_name
+#     vpc_security_group_ids = [ aws_security_group.MOBANN-SG.id ]
+#     user_data = file("user_data.tpl")
+
+#     tags = {
+#         Name = "MOBANN-EC2*"
+#     }
+# }
+
+# # create a launch template
+# resource "aws_launch_template" "MOBANN-TEMPLATE" {
+#     name = "MOBANN-TEMPLATE"
+#     image_id = data.aws_ami.MOBANN-AMI.id
+#     instance_type = "t3.micro"
+#     key_name = aws_key_pair.MOBANN-KP.key_name
+#     vpc_security_group_ids = [ aws_security_group.MOBANN-SG.id ]
+#     user_data = filebase64("user_data.tpl")
+#     tags = {
+#         Name = "MOBANN-TEMPLATE"
+#     }
+# }
+
+# # create an autoscaling group
+# resource "aws_autoscaling_group" "MOBANN-ASG" {
+#     name                = "MOBANN-ASG"
+#     max_size            = 3
+#     min_size            = 2
+#     desired_capacity    = 2
+#     availability_zones = [ "us-west-2a", "us-west-2b" ]
+#     launch_template {
+#         id = aws_launch_template.MOBANN-TEMPLATE.id
+#         version = "$Latest"
+#     }
+#     tag {
+#         key                 = "Name"
+#         value               = "MOBANN-ASG"
+#         propagate_at_launch = true
+#     }
+# }
